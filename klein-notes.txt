@@ -1,0 +1,9 @@
+possible design changes/refactorings:
+
+have setup functions of parser and scanner return functions
+semantic analyzer test cases
+add parser test case for multiple occurrences of a symbol in rule
+semantic stack: by reference?  dynamically (special) scoped?
+scanner start-state parameter
+error recovery (esp. parser) - "mention-error"
+packaging

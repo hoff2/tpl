@@ -1,0 +1,5 @@
+main(a : integer, b : integer) : integer
+  if a < b then b
+           else a
+  endif
+

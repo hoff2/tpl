@@ -1,0 +1,48 @@
+// MaxToMin
+// Matt Wemmie and Jonathan Paisley
+// This program takes 3 integers and a boolean value
+// If the boolean is true, the integers will print from largest to smallest
+// and the initial position of the max will be returned.
+// If the boolean is false, the integers will print from smallest to largest
+// and the initial position of the min will be returned.
+
+main(first : integer,
+	second : integer,
+	third  : integer,
+	maxToMin : boolean) : integer
+
+if eval(maxToMin, first, second) then
+	if eval(maxToMin, first, third) then
+		if eval(maxToMin, second, third) then
+			print (first, second, third)
+			1
+		else
+			print (first, third, second)
+			1
+		endif
+	else
+		print (third, first, second)
+		3
+	endif
+else
+	if eval(maxToMin, second, third) then
+		if eval(maxToMin, first, third) then
+			print (second, first, third)
+			2
+		else
+			print (second, third, first)
+			2
+		endif
+	else
+		print( third, second, first)
+		3
+	endif
+endif
+eval(max : boolean,
+	x  : integer,
+	y  : integer) : boolean
+if max then
+	not x < y
+else
+	x < y
+endif

@@ -1,0 +1,132 @@
+Chuck Hoffman
+Translation of Programming Languages
+Fall 2007
+
+TM (TinyMachine) code generation for Klein
+
+
+Code generation for this project was one of the easiest things to
+conceptualize but one of the hardest things to get right / locate
+sources of bugs in.  Pretty intriguing at times.
+
+The subset of Klein I implemented was everything except print
+statements.  I never did get around to getting print statements to
+parse properly.  To make up for this, I had my runtime environment
+output the return value of main() as the last operation before halting
+execution.
+
+Rather than immediately begin generating code to a file, I first
+generated an intermediate representation that was a direct
+representation of TM code in a nested list.  Code generation for each
+abstract syntax node produced a list in which the elements were lists
+consisting of a symbol for the opcode, the three operands, and an
+optional comment.  Blocks of code in this format are appended together
+as generation proceededs, and once the code-list for the entire
+program is generated, a textual representation of it is written to the
+output file.  The major win for this was in determing target arguments
+for jump statements -- rather than backpatching in a conditional or
+logical expression, I could generate each branch separately, then glue
+jump statements in between easily by checking their lengths.
+
+I ended up trading this kind of backpatching for another; argument and
+function identifiers are initially left in the generated code, then
+replaced by appropriate offsets from the frame pointer for as the last
+step of code generation for function definitions, as determined by
+their "lexical index" (their position in the parameter list; since
+Klein has only local variables and global functions, the first
+component of a lexical address for an argument from within a function
+is always 0); similarly, the last step in code generation for the full
+program is to replace function identifiers by each functions' start
+address as determined from the lengths of the program prelude and the
+functions' generated code lists (from within a function's symbol
+table, the first component of the lexical address for a function name
+is always 1).
+
+No assumptions are made in the code generation about any state left in
+the registers.  Each expression is expected to leave its value on top
+of the stack.  I didn't like the idea of having to keep track of
+locations and/or registers for three-address temp variables anyway.
+Only the top two temps on the stack, at most, are of direct concern to
+generation of any expression.  The downside of this is that around the
+boundaries of subexpressions there is a lot of pushing temps to the
+stack, only to immediately pop them off to a register again.  I have
+some ideas about optimizing this that I would like to get to later in
+this document.
+
+For register allocation, I globally allocated register 6 for the frame
+pointer and register 5 for the stack pointer; I adopted the
+conventions of using registers 0 through 2 in evaluation of
+expressions, where 0 is conventionally used for left operand, 1 for
+right, and 2 for result.  This leaves registers 3 and 4 available for
+miscellaneous stuff, usually for address arithmetic.
+
+stack frame format:
+fp + 0 = eventual location of return value; location of sp after
+         return
+fp + 1 = return address
+fp + 2 = caller's fp
+fp + 3 = first argument
+fp + 3 + function arity: start of temp-stack
+
+Function call expressions are treated very similarly to other
+expressions, in that they are expected leave their return value on top
+of the stack; thus they also have the responsibility of saving a
+return address and the caller's frame pointer and restoring it before
+jumping to the return address.  After these, the arguments are
+evaluated as temps on the stack, after which the frame pointer is
+updated to a location such that these new temps are in the arguments
+portion.  Determining the proper locations for these things during the
+call and return sequences got a little hairy; I had to calculate the
+"about to be" location of the frame pointer during code generation,
+then recalculate it after arguments-push as "stack pointer minus 2
+more than the number of arguments."  Initially I calculated this up
+front and held it in one of the miscellaneous registers, but this
+caused a problem when any argument expression was also a call since
+the miscellaneous register would be overwritten and I'd get a crazy
+infinite loop that would blow out the memory; so I prety quickly
+realized that I could not count on maintaining any state in registers
+between the "start a new stack frame with space for return value,
+saved frame-pointer and return address" step, "push the arguments"
+step, and "set the frame pointer for the new call and jump" step.
+
+The program prelude works much like a function call; it begins by
+initializing the frame pointer to the next available address after the
+command-line arguments; next it starts a stack frame for main, copying
+the command-line arguments into its argument area; however, the frame
+pointer stays where it is, and the saved frame pointer is equal to
+this one as well, so that when main completes its return sequence, the
+frame pointer is redundantly loaded with the same value it starts with
+here.  After main returns, the return value is picked up right where
+it is expected to be and output'd.
+
+Fun thing about generating this kind of code: good old off-by-one
+errors will really bite you in the butt.
+
+I didn't much get around to optimizations, but I have a few good
+ideas.  Tail-call optimization is an obvious one, but I became
+cognizant early on of redundant trips to the temp-stack and back.  I
+actually have an interesting idea that I mentioned in class before
+about removing the redundant instructions based on analysis of the
+generated code.  Two such redundant trips come to mind: redundant
+loads (of either variables or temps), and redundant store-and-reload
+of temps.  Generated code could be scanned for a start condition such
+as "load or store instruction", then scanned from there for an
+instruction meeting a found-condition such as "load instruction with
+same operands as start-condition instruction," subject to an abort
+condition such as "change of stack pointer, frame pointer, or program
+counter, or load to same register as start-condition's instruction."
+If the second condition is found before the third, one or both of the
+start-condition instruction and found-condition instruction are
+candidates for removal, as are increments or decrememnt of the stack
+pointer immediately adjacent to them if the redundant operands include
+the stack pointer register.  This would be interesting to implement,
+but does still miss certain cases in the context of a conditional
+(something that would require following the code in the order of
+execution rather than order of appearance.)
+
+To fire this baby up, evaluate the contents of klein-demo.lisp and
+execute klein-compile with the path (excluding .kln suffix) of a Klein
+program.  The generated .tm file will end up in the same directory.
+You can also give a non-null second argument that will concatenate on
+the path given by the global *klein-dir*.
+

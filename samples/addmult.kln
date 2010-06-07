@@ -1,0 +1,3 @@
+main(a : integer, b : integer, c: integer) : integer
+   a + b * c
+

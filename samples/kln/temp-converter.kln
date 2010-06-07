@@ -1,0 +1,18 @@
+// based on a program by Alex and Harald
+
+main (flag : integer, temp : integer) : integer
+
+	if flag = 0
+	then
+		celsiusToFahrenheit(temp)
+	else
+		fahrenheitToCelsius(temp)
+	endif
+
+celsiusToFahrenheit(temp : integer) : integer //this is comment
+	32 + temp*9/5
+
+fahrenheitToCelsius(temp : integer) : integer
+	temp*5/9 -32
+
+

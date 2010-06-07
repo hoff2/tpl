@@ -1,0 +1,9 @@
+isZero(x:integer):boolean x=0
+
+double(a:integer, b:integer):boolean a / b = 2
+
+main(a : integer, b : integer) : integer
+   if isZero(b) or double(a, b)
+      then 99
+      else a / b
+   endif
